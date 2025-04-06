@@ -1,6 +1,12 @@
 // Initialize PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
+// Global constants
+const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June', 
+    'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 // DOM elements
 const uploadArea = document.getElementById('upload-area');
 const fileInput = document.getElementById('file-input');
@@ -185,6 +191,7 @@ function readFileAsArrayBuffer(file) {
 
 // Process standard calendar format
 function processStandardCalendar(text, month, year) {
+    console.log(`Processing calendar for ${monthNames[month]} ${year}`);
     const events = [];
     
     // Find day numbers (1-31)
@@ -213,6 +220,8 @@ function processStandardCalendar(text, month, year) {
         }
     }
     
+    console.log(`Found ${dayMatches.length} potential day markers`);
+    
     // Process each day
     for (const dayMatch of dayMatches) {
         const day = dayMatch.day;
@@ -221,6 +230,7 @@ function processStandardCalendar(text, month, year) {
         events.push(...dayEvents);
     }
     
+    console.log(`Extracted ${events.length} total events`);
     return events;
 }
 
@@ -241,6 +251,8 @@ function extractEventsForDay(context, day, month, year) {
     // Find times (e.g., 9:30, 10:00, etc.)
     const timeRegex = /\b(([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9])(?:\s*([aApP][mM])?)?\b/g;
     let timeMatch;
+    
+    console.log(`Processing events for day ${day} of ${monthNames[month]} ${year}`);
     
     while ((timeMatch = timeRegex.exec(context)) !== null) {
         const timeStr = timeMatch[1];
@@ -282,10 +294,12 @@ function extractEventsForDay(context, day, month, year) {
         }
         
         if (description && description.length > 0) {
-            // Create date objects
-            const start = new Date(year, month, day, hours, minutes);
-            const end = new Date(start);
-            end.setHours(end.getHours() + 1);
+            // Create the event date - ensure we're creating a new Date object
+            let start = new Date(year, month, day, hours, minutes);
+            let end = new Date(year, month, day, hours + 1, minutes);
+            
+            // Debug log
+            console.log(`Adding event: "${description}" on ${start.toISOString()}`);
             
             events.push({
                 summary: description,
@@ -311,12 +325,11 @@ function extractEventsForDay(context, day, month, year) {
         
         for (const specialDay of specialDays) {
             if (context.includes(specialDay)) {
-                // Create all-day event
-                const start = new Date(year, month, day);
-                start.setHours(0, 0, 0, 0);
+                // Create all-day event with proper date
+                const start = new Date(year, month, day, 0, 0, 0);
+                const end = new Date(year, month, day + 1, 0, 0, 0);
                 
-                const end = new Date(start);
-                end.setDate(end.getDate() + 1);
+                console.log(`Adding all-day event: "${specialDay}" on ${start.toISOString()}`);
                 
                 events.push({
                     summary: specialDay,
@@ -329,6 +342,7 @@ function extractEventsForDay(context, day, month, year) {
         }
     }
     
+    console.log(`Found ${events.length} events for day ${day}`);
     return events;
 }
 
@@ -600,9 +614,6 @@ function updateICalData() {
 
 // Generate iCal data
 function generateICalData(events, timezone) {
-    // For simplicity, defaulting to UTC to avoid timezone issues
-    timezone = 'UTC';
-    
     const calendarComponent = new ICAL.Component(['vcalendar', [], []]);
     
     // Set required properties
@@ -611,61 +622,101 @@ function generateICalData(events, timezone) {
     calendarComponent.updatePropertyWithValue('calscale', 'GREGORIAN');
     calendarComponent.updatePropertyWithValue('method', 'PUBLISH');
     
-    events.forEach(event => {
+    console.log('Generating iCal with', events.length, 'events');
+    
+    events.forEach((event, index) => {
         const vevent = new ICAL.Component('vevent');
         
+        // Add summary (event title)
         const summary = new ICAL.Property('summary', vevent);
         summary.setValue(event.summary);
         vevent.addProperty(summary);
         
+        // Debug: Log each event's date information
+        console.log(`Event ${index}: ${event.summary}`);
+        console.log(`  Original start: ${event.start.toISOString()}`);
+        console.log(`  Original end: ${event.end.toISOString()}`);
+        
         // Handle start time differently for all-day events
         if (event.isAllDay) {
-            // All-day events use DATE value type without time component
+            // Create a date-only value for all-day events
             const dtstart = new ICAL.Property('dtstart', vevent);
-            const startTime = ICAL.Time.fromJSDate(event.start, true); // true = date only
+            const startTime = new ICAL.Time({
+                year: event.start.getFullYear(),
+                month: event.start.getMonth() + 1, // ICAL.js uses 1-based months
+                day: event.start.getDate(),
+                isDate: true // This is a date-only value
+            });
             dtstart.setValue(startTime);
             dtstart.setParameter('value', 'DATE');
             vevent.addProperty(dtstart);
             
             // End date for all-day events
             const dtend = new ICAL.Property('dtend', vevent);
-            const endTime = ICAL.Time.fromJSDate(event.end, true);
+            const endTime = new ICAL.Time({
+                year: event.end.getFullYear(),
+                month: event.end.getMonth() + 1, // ICAL.js uses 1-based months
+                day: event.end.getDate(),
+                isDate: true // This is a date-only value
+            });
             dtend.setValue(endTime);
             dtend.setParameter('value', 'DATE');
             vevent.addProperty(dtend);
+            
+            console.log(`  All-day event: ${startTime.year}-${startTime.month}-${startTime.day}`);
         } else {
-            // For timed events, use UTC format (simpler and more compatible)
+            // Create proper datetime for timed events
             const dtstart = new ICAL.Property('dtstart', vevent);
-            const jsStartDate = new Date(event.start.toUTCString());
-            const startTime = ICAL.Time.fromJSDate(jsStartDate);
+            const startTime = new ICAL.Time({
+                year: event.start.getFullYear(),
+                month: event.start.getMonth() + 1, // ICAL.js uses 1-based months
+                day: event.start.getDate(),
+                hour: event.start.getHours(),
+                minute: event.start.getMinutes(),
+                second: 0,
+                isDate: false
+            });
             startTime.zone = ICAL.Timezone.utcTimezone;
             dtstart.setValue(startTime);
             vevent.addProperty(dtstart);
             
+            // End time for timed events
             const dtend = new ICAL.Property('dtend', vevent);
-            const jsEndDate = new Date(event.end.toUTCString());
-            const endTime = ICAL.Time.fromJSDate(jsEndDate);
+            const endTime = new ICAL.Time({
+                year: event.end.getFullYear(),
+                month: event.end.getMonth() + 1, // ICAL.js uses 1-based months
+                day: event.end.getDate(), 
+                hour: event.end.getHours(),
+                minute: event.end.getMinutes(),
+                second: 0,
+                isDate: false
+            });
             endTime.zone = ICAL.Timezone.utcTimezone;
             dtend.setValue(endTime);
             vevent.addProperty(dtend);
+            
+            console.log(`  Timed event: ${startTime.year}-${startTime.month}-${startTime.day} ${startTime.hour}:${startTime.minute}`);
         }
         
+        // Add location if available
         if (event.location) {
             const location = new ICAL.Property('location', vevent);
             location.setValue(event.location);
             vevent.addProperty(location);
         }
         
+        // Add UID (required for valid iCal)
         const uid = new ICAL.Property('uid', vevent);
         uid.setValue(`${Date.now()}-${Math.random().toString(36).substring(2, 9)}@pdfcalendar.converter`);
         vevent.addProperty(uid);
         
+        // Add timestamp
         const dtstamp = new ICAL.Property('dtstamp', vevent);
         const now = ICAL.Time.now();
-        now.zone = ICAL.Timezone.utcTimezone;
         dtstamp.setValue(now);
         vevent.addProperty(dtstamp);
         
+        // Add the event to the calendar
         calendarComponent.addSubcomponent(vevent);
     });
     
