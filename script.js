@@ -311,6 +311,7 @@ function processGridCalendar(text, month, year) {
 }
 
 // Process town hall style calendars (days as columns)
+// Process town hall style calendars (days as columns)
 function processTownHallCalendar(text, month, year) {
     console.log(`Processing Town Hall calendar for ${monthNames[month]} ${year}`);
     const events = [];
@@ -425,120 +426,101 @@ function processTownHallCalendar(text, month, year) {
             
             // Now find which day this should go on based on weekday
             // We need to calculate the day of the month for each weekday
+
+            // First, find the day numbers in the PDF text that are associated with this weekday
+            const dayNumbersForWeekday = [];
             
-            // Find dates that match this weekday
-            const daysForWeekday = [];
-            
-            for (let day = 1; day <= 31; day++) {
-                // Check if this day exists in this month
-                const testDate = new Date(year, month, day);
-                if (testDate.getMonth() === month) {
-                    // Check if this day is the right weekday
-                    if (testDate.getDay() === weekdayIndex) {
-                        daysForWeekday.push(day);
-                    }
+            // Look through our day numbers array to find all occurrences of this weekday
+            for (const dayInfo of dayNumbers) {
+                // Find which weekday this day belongs to using the dayToWeekday map
+                if (dayToWeekday.has(dayInfo.day) && dayToWeekday.get(dayInfo.day) === weekdayIndex) {
+                    dayNumbersForWeekday.push(dayInfo);
                 }
             }
             
-            console.log(`Found ${daysForWeekday.length} days that are ${weekdays[weekdayIndex]}`);
+            console.log(`Found ${dayNumbersForWeekday.length} days that are ${weekdays[weekdayIndex]}`);
             
-// Replace the following code in the processTownHallCalendar function 
-// Look for this section (around line 600):
-
-// Now find which day this should go on based on weekday
-// We need to calculate the day of the month for each weekday
-
-// Find dates that match this weekday
-const daysForWeekday = [];
-
-for (let day = 1; day <= 31; day++) {
-    // Check if this day exists in this month
-    const testDate = new Date(year, month, day);
-    if (testDate.getMonth() === month) {
-        // Check if this day is the right weekday
-        if (testDate.getDay() === weekdayIndex) {
-            daysForWeekday.push(day);
-        }
-    }
-}
-
-console.log(`Found ${daysForWeekday.length} days that are ${weekdays[weekdayIndex]}`);
-
-// Now determine which occurrence of this weekday the event belongs to
-// For simplicity, we'll use the position in the text to guess the week
-
-// Find how far down from the weekday header this time appears
-const distanceFromHeader = timeMatch.index - weekdayHeaderIndex;
-
-// Roughly estimate which week this might be (1-5)
-// This is a heuristic and might need tuning
-let weekEstimate = Math.floor(distanceFromHeader / 1000) + 1;
-if (weekEstimate < 1) weekEstimate = 1;
-if (weekEstimate > daysForWeekday.length) weekEstimate = daysForWeekday.length;
-
-// Adjust if this seems to be a repeated daily activity
-const eventDay = daysForWeekday[weekEstimate - 1];
-
-// REPLACE THE ABOVE CODE WITH THIS IMPROVED VERSION:
-
-// Now find which day this should go on based on weekday
-// We need to calculate the day of the month for each weekday
-
-// First, find the day numbers in the PDF text that are associated with this weekday
-const dayNumbersForWeekday = [];
-let i = 0;
-
-// Look through our day numbers array to find all occurrences of this weekday
-for (const dayInfo of dayNumbers) {
-    // Find which weekday this day belongs to using the dayToWeekday map
-    if (dayToWeekday.has(dayInfo.day) && dayToWeekday.get(dayInfo.day) === weekdayIndex) {
-        dayNumbersForWeekday.push(dayInfo);
-    }
-}
-
-console.log(`Found ${dayNumbersForWeekday.length} days that are ${weekdays[weekdayIndex]}`);
-
-// Now determine which occurrence of this weekday the event belongs to
-// Based on vertical position in the PDF
-const distanceFromHeader = timeMatch.index - weekdayHeaderIndex;
-
-// Find the closest day number for this weekday
-let closestDayInfo = null;
-let minDistance = Infinity;
-
-for (const dayInfo of dayNumbersForWeekday) {
-    const distance = Math.abs(dayInfo.index - timeMatch.index);
-    if (distance < minDistance) {
-        minDistance = distance;
-        closestDayInfo = dayInfo;
-    }
-}
-
-// Default to first day of month if we can't find a match
-let eventDay = 1;
-
-if (closestDayInfo) {
-    eventDay = closestDayInfo.day;
-} else {
-    // Backup method: calculate day based on weekday
-    const daysForWeekday = [];
-    for (let day = 1; day <= 31; day++) {
-        // Check if this day exists in this month
-        const testDate = new Date(year, month, day);
-        if (testDate.getMonth() === month) {
-            // Check if this day is the right weekday
-            if (testDate.getDay() === weekdayIndex) {
-                daysForWeekday.push(day);
+            // Now determine which occurrence of this weekday the event belongs to
+            // Based on vertical position in the PDF
+            const distanceFromHeader = timeMatch.index - weekdayHeaderIndex;
+            
+            // Find the closest day number for this weekday
+            let closestDayInfo = null;
+            let minDistance = Infinity;
+            
+            for (const dayInfo of dayNumbersForWeekday) {
+                const distance = Math.abs(dayInfo.index - timeMatch.index);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestDayInfo = dayInfo;
+                }
             }
-        }
-    }
-    
-    // Use position in text to estimate week
-    let weekEstimate = Math.min(Math.floor(distanceFromHeader / 1000) + 1, daysForWeekday.length);
-    if (weekEstimate < 1) weekEstimate = 1;
-    
-    eventDay = daysForWeekday[weekEstimate - 1];
-}
+            
+            // Default to first day of month if we can't find a match
+            let eventDay = 1;
+            
+            if (closestDayInfo) {
+                eventDay = closestDayInfo.day;
+            } else {
+                // Backup method: calculate day based on weekday
+                const daysForWeekday = [];
+                for (let day = 1; day <= 31; day++) {
+                    // Check if this day exists in this month
+                    const testDate = new Date(year, month, day);
+                    if (testDate.getMonth() === month) {
+                        // Check if this day is the right weekday
+                        if (testDate.getDay() === weekdayIndex) {
+                            daysForWeekday.push(day);
+                        }
+                    }
+                }
+                
+                // Use position in text to estimate week
+                let weekEstimate = Math.min(Math.floor(distanceFromHeader / 1000) + 1, daysForWeekday.length);
+                if (weekEstimate < 1) weekEstimate = 1;
+                
+                eventDay = daysForWeekday[weekEstimate - 1];
+            }
+            
+            // Get the event description
+            const afterTimeText = text.substring(
+                timeMatch.index + timeMatch[0].length,
+                Math.min(text.length, timeMatch.index + timeMatch[0].length + 100)
+            );
+            
+            // Extract description until clear break
+            let description = afterTimeText.trim().split(/\s{2,}|\n|\r/)[0];
+            if (description.length < 3) {
+                description = afterTimeText.trim().substring(0, 50);
+            }
+            
+            // Parse hours and minutes
+            const [hoursStr, minutesStr] = timeStr.split(':');
+            let hours = parseInt(hoursStr);
+            const minutes = parseInt(minutesStr);
+            
+            // Apply AM/PM rules
+            if (ampmStr) {
+                if (ampmStr === 'pm' && hours < 12) hours += 12;
+                else if (ampmStr === 'am' && hours === 12) hours = 0;
+            } else if (hours < 7) {
+                hours += 12; // Assume 1-6 is PM
+            }
+            
+            if (description && description.length > 0) {
+                // Check if we already have an event block for this day
+                if (!eventBlocksByDay.has(eventDay)) {
+                    eventBlocksByDay.set(eventDay, []);
+                }
+                
+                // Add this event to the block
+                eventBlocksByDay.get(eventDay).push({
+                    time: timeStr,
+                    hours: hours,
+                    minutes: minutes,
+                    description: description
+                });
+            }
         }
     }
     
@@ -613,7 +595,6 @@ if (closestDayInfo) {
     
     return events;
 }
-
 // Process text-style calendar
 function processTextCalendar(text, month, year) {
     return processStandardCalendar(text, month, year);
