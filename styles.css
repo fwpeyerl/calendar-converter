@@ -220,3 +220,45 @@ button:hover {
     background-color: #2ecc71;
     margin-right: 10px;
 }
+
+.events-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.events-table th {
+    text-align: left;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+    font-weight: bold;
+}
+
+.events-table td {
+    padding: 8px;
+    vertical-align: top;
+    border-bottom: 1px solid #eee;
+}
+
+.events-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.events-table input[type="text"],
+.events-table input[type="date"],
+.events-table input[type="time"] {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.events-table input[type="text"]:focus,
+.events-table input[type="date"]:focus,
+.events-table input[type="time"]:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
+}
