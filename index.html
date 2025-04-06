@@ -80,17 +80,17 @@
             
             <h2>Step 3: Extract Events</h2>
             <p>After uploading and setting calendar details, extract events from your PDF calendar.</p>
-            <button id="extract-btn" disabled>Extract Events</button>
+            <div style="display: flex; gap: 10px;">
+                <button id="extract-btn" disabled>Extract Events</button>
+                <button id="edit-events-btn" style="display: none;">Edit Events</button>
+            </div>
             <div class="loader" id="loader"></div>
             <div id="preview" style="display: none;">
                 <h3>Extracted Events Preview</h3>
                 <div id="events-list"></div>
-                <div style="margin-top: 20px">
-                    <button id="edit-events-btn">Edit Events</button>
-                    <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
-                        Not seeing the correct events? Use the Edit Events button to manually adjust them.
-                    </p>
-                </div>
+                <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                    Not seeing the correct events? Use the Edit Events button to manually adjust them.
+                </p>
             </div>
         </div>
         

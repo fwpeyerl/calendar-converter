@@ -165,6 +165,9 @@ extractBtn.addEventListener('click', async () => {
         updateICalData();
         
         resultContainer.style.display = 'block';
+        
+        // Show edit button only after successful extraction
+        editEventsBtn.style.display = 'inline-block';
     } catch (error) {
         console.error('Error processing PDF:', error);
         alert('Error processing PDF. Please try another file.');
@@ -414,6 +417,14 @@ function displayEventPreview() {
     preview.style.display = 'block';
 }
 
+// Format date for input fields
+function formatDateForInput(date) {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 // Format time for input fields
 function formatTimeForInput(date) {
     const hours = date.getHours().toString().padStart(2, '0');
@@ -423,7 +434,29 @@ function formatTimeForInput(date) {
 
 // Show event editor
 function showEventEditor() {
+    // Clear previous content
     eventEditor.innerHTML = '';
+    
+    // Add buttons at the top
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.position = 'sticky';
+    buttonContainer.style.top = '0';
+    buttonContainer.style.backgroundColor = '#fff';
+    buttonContainer.style.padding = '10px 0';
+    buttonContainer.style.borderBottom = '1px solid #ddd';
+    buttonContainer.style.marginBottom = '20px';
+    buttonContainer.style.zIndex = '10';
+    
+    // Make save button more prominent
+    saveButton.style.display = 'inline-block';
+    saveButton.style.marginRight = '10px';
+    
+    // Add buttons to container
+    buttonContainer.appendChild(saveButton);
+    buttonContainer.appendChild(closeButton);
+    
+    // Add button container to the editor before any content
+    modalContent.insertBefore(buttonContainer, modalContent.firstChild);
     
     if (calendarEvents.length === 0) {
         eventEditor.innerHTML = '<p>No events to edit. Extract events first.</p>';
@@ -462,6 +495,10 @@ function showEventEditor() {
                     <div class="form-group">
                         <label>Event Title:</label>
                         <input type="text" class="event-title" value="${event.summary}" style="width: 100%; padding: 8px;">
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label>Date:</label>
+                        <input type="date" class="event-date" value="${formatDateForInput(event.start)}" style="width: 100%; padding: 8px;">
                     </div>
                     <div class="form-group" style="margin-top: 10px;">
                         <label>
@@ -515,8 +552,7 @@ function showEventEditor() {
                 const year = parseInt(calendarYear.value);
                 
                 const newEventDate = new Date(year, month, day, 9, 0, 0);
-                const newEndDate = new Date(newEventDate);
-                newEndDate.setHours(newEndDate.getHours() + 1);
+                const newEndDate = new Date(year, month, day, 10, 0, 0);
                 
                 const newEvent = {
                     summary: 'New Event',
@@ -541,6 +577,7 @@ function showEventEditor() {
         
         eventDivs.forEach((div) => {
             const titleInput = div.querySelector('.event-title');
+            const dateInput = div.querySelector('.event-date');
             const allDayCheckbox = div.querySelector('.all-day-checkbox');
             const startTimeInput = div.querySelector('.start-time');
             const endTimeInput = div.querySelector('.end-time');
@@ -554,19 +591,26 @@ function showEventEditor() {
                 event.summary = titleInput.value;
                 event.isAllDay = allDayCheckbox.checked;
                 
+                // Parse the date
+                const [year, month, day] = dateInput.value.split('-').map(Number);
+                
                 if (!event.isAllDay && startTimeInput && endTimeInput) {
                     // Update start time
                     const [startHours, startMinutes] = startTimeInput.value.split(':').map(Number);
-                    event.start.setHours(startHours, startMinutes, 0, 0);
+                    event.start = new Date(year, month - 1, day, startHours, startMinutes, 0);
                     
                     // Update end time
                     const [endHours, endMinutes] = endTimeInput.value.split(':').map(Number);
-                    event.end.setHours(endHours, endMinutes, 0, 0);
+                    event.end = new Date(year, month - 1, day, endHours, endMinutes, 0);
+                    
+                    // Handle end time earlier than start time (assume next day)
+                    if (event.end < event.start) {
+                        event.end.setDate(event.end.getDate() + 1);
+                    }
                 } else if (event.isAllDay) {
                     // Set proper all-day event times
-                    event.start.setHours(0, 0, 0, 0);
-                    event.end = new Date(event.start);
-                    event.end.setDate(event.end.getDate() + 1);
+                    event.start = new Date(year, month - 1, day, 0, 0, 0);
+                    event.end = new Date(year, month - 1, day + 1, 0, 0, 0);
                 }
             }
         });
