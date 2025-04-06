@@ -608,6 +608,11 @@ function generateICalData(events, timezone) {
     calendarComponent.updatePropertyWithValue('calscale', 'GREGORIAN');
     calendarComponent.updatePropertyWithValue('method', 'PUBLISH');
     
+    // Add timezone component if a timezone is specified
+    if (timezone && timezone !== 'UTC') {
+        addTimezoneComponent(calendarComponent, timezone);
+    }
+    
     events.forEach(event => {
         const vevent = new ICAL.Component('vevent');
         
@@ -615,35 +620,53 @@ function generateICalData(events, timezone) {
         summary.setValue(event.summary);
         vevent.addProperty(summary);
         
-        // Create start time with timezone
-        const dtstart = new ICAL.Property('dtstart', vevent);
-        const startTime = ICAL.Time.fromJSDate(event.start, false);
-        startTime.zone = ICAL.Timezone.utcTimezone;
-        dtstart.setValue(startTime);
-        
-        // Set date value type for all-day events
+        // Handle start time differently for all-day events
         if (event.isAllDay) {
+            // All-day events use DATE value type without time component
+            const dtstart = new ICAL.Property('dtstart', vevent);
+            const startTime = ICAL.Time.fromJSDate(event.start, true); // true = no time component
+            dtstart.setValue(startTime);
             dtstart.setParameter('value', 'DATE');
-        } else if (timezone) {
-            dtstart.setParameter('tzid', timezone);
-        }
-        
-        vevent.addProperty(dtstart);
-        
-        // Create end time with timezone
-        const dtend = new ICAL.Property('dtend', vevent);
-        const endTime = ICAL.Time.fromJSDate(event.end, false);
-        endTime.zone = ICAL.Timezone.utcTimezone;
-        dtend.setValue(endTime);
-        
-        // Set date value type for all-day events
-        if (event.isAllDay) {
+            vevent.addProperty(dtstart);
+            
+            // End date for all-day events
+            const dtend = new ICAL.Property('dtend', vevent);
+            const endTime = ICAL.Time.fromJSDate(event.end, true);
+            dtend.setValue(endTime);
             dtend.setParameter('value', 'DATE');
-        } else if (timezone) {
-            dtend.setParameter('tzid', timezone);
+            vevent.addProperty(dtend);
+        } else {
+            // Regular events with time component
+            if (timezone && timezone !== 'UTC') {
+                // Use local time with TZID parameter
+                const dtstart = new ICAL.Property('dtstart', vevent);
+                const startTime = ICAL.Time.fromJSDate(event.start, false);
+                startTime.zone = null; // Don't set UTC zone
+                dtstart.setValue(startTime);
+                dtstart.setParameter('tzid', timezone);
+                vevent.addProperty(dtstart);
+                
+                const dtend = new ICAL.Property('dtend', vevent);
+                const endTime = ICAL.Time.fromJSDate(event.end, false);
+                endTime.zone = null; // Don't set UTC zone
+                dtend.setValue(endTime);
+                dtend.setParameter('tzid', timezone);
+                vevent.addProperty(dtend);
+            } else {
+                // Use UTC time format
+                const dtstart = new ICAL.Property('dtstart', vevent);
+                const startTime = ICAL.Time.fromJSDate(event.start, false);
+                startTime.zone = ICAL.Timezone.utcTimezone;
+                dtstart.setValue(startTime);
+                vevent.addProperty(dtstart);
+                
+                const dtend = new ICAL.Property('dtend', vevent);
+                const endTime = ICAL.Time.fromJSDate(event.end, false);
+                endTime.zone = ICAL.Timezone.utcTimezone;
+                dtend.setValue(endTime);
+                vevent.addProperty(dtend);
+            }
         }
-        
-        vevent.addProperty(dtend);
         
         if (event.location) {
             const location = new ICAL.Property('location', vevent);
@@ -656,11 +679,41 @@ function generateICalData(events, timezone) {
         vevent.addProperty(uid);
         
         const dtstamp = new ICAL.Property('dtstamp', vevent);
-        dtstamp.setValue(ICAL.Time.fromJSDate(new Date(), false));
+        const now = new ICAL.Time.fromJSDate(new Date(), false);
+        now.zone = ICAL.Timezone.utcTimezone;
+        dtstamp.setValue(now);
         vevent.addProperty(dtstamp);
         
         calendarComponent.addSubcomponent(vevent);
     });
     
     return calendarComponent.toString();
+}
+
+// Function to add timezone component to iCal
+function addTimezoneComponent(calendar, timezone) {
+    // Create a basic VTIMEZONE component
+    const vtimezone = new ICAL.Component('vtimezone');
+    vtimezone.updatePropertyWithValue('tzid', timezone);
+    
+    // Create standard time component
+    const standard = new ICAL.Component('standard');
+    standard.updatePropertyWithValue('dtstart', '19701101T020000');
+    standard.updatePropertyWithValue('rrule', 'FREQ=YEARLY;BYMONTH=11;BYDAY=1SU');
+    standard.updatePropertyWithValue('tzoffsetfrom', '-0400');
+    standard.updatePropertyWithValue('tzoffsetto', '-0500');
+    standard.updatePropertyWithValue('tzname', 'Standard Time');
+    vtimezone.addSubcomponent(standard);
+    
+    // Create daylight time component
+    const daylight = new ICAL.Component('daylight');
+    daylight.updatePropertyWithValue('dtstart', '19700308T020000');
+    daylight.updatePropertyWithValue('rrule', 'FREQ=YEARLY;BYMONTH=3;BYDAY=2SU');
+    daylight.updatePropertyWithValue('tzoffsetfrom', '-0500');
+    daylight.updatePropertyWithValue('tzoffsetto', '-0400');
+    daylight.updatePropertyWithValue('tzname', 'Daylight Time');
+    vtimezone.addSubcomponent(daylight);
+    
+    // Add timezone to calendar
+    calendar.addSubcomponent(vtimezone);
 }
