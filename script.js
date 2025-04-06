@@ -461,131 +461,216 @@ function showEventEditor() {
     if (calendarEvents.length === 0) {
         eventEditor.innerHTML = '<p>No events to edit. Extract events first.</p>';
     } else {
-        // Group by day
-        const eventsByDay = {};
+        // Sort all events by date and time
+        calendarEvents.sort((a, b) => a.start - b.start);
+        
+        // Create the table
+        const table = document.createElement('table');
+        table.className = 'events-table';
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        
+        // Create table header
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+            <tr>
+                <th style="text-align: left; padding: 8px; border-bottom: 2px solid #ddd;">Date</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 2px solid #ddd;">Time</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 2px solid #ddd; width: 40%;">Event</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 2px solid #ddd;">All Day</th>
+                <th style="text-align: left; padding: 8px; border-bottom: 2px solid #ddd;">Actions</th>
+            </tr>
+        `;
+        table.appendChild(thead);
+        
+        // Create table body
+        const tbody = document.createElement('tbody');
+        
+        // Add events to table
         calendarEvents.forEach((event, index) => {
-            const day = event.start.getDate();
-            if (!eventsByDay[day]) {
-                eventsByDay[day] = [];
-            }
-            eventsByDay[day].push({...event, index});
+            const tr = document.createElement('tr');
+            tr.dataset.index = index;
+            tr.style.borderBottom = '1px solid #eee';
+            
+            // Date cell
+            const dateCell = document.createElement('td');
+            dateCell.style.padding = '8px';
+            const dateInput = document.createElement('input');
+            dateInput.type = 'date';
+            dateInput.className = 'event-date';
+            dateInput.value = formatDateForInput(event.start);
+            dateInput.style.border = '1px solid #ddd';
+            dateInput.style.padding = '4px';
+            dateInput.style.borderRadius = '3px';
+            dateCell.appendChild(dateInput);
+            
+            // Time cell - contains start and end times if not all-day
+            const timeCell = document.createElement('td');
+            timeCell.style.padding = '8px';
+            
+            const timeContainer = document.createElement('div');
+            timeContainer.className = 'time-inputs';
+            timeContainer.style.display = event.isAllDay ? 'none' : 'block';
+            
+            const startTimeInput = document.createElement('input');
+            startTimeInput.type = 'time';
+            startTimeInput.className = 'start-time';
+            startTimeInput.value = formatTimeForInput(event.start);
+            startTimeInput.style.border = '1px solid #ddd';
+            startTimeInput.style.padding = '4px';
+            startTimeInput.style.borderRadius = '3px';
+            startTimeInput.style.marginBottom = '5px';
+            startTimeInput.style.width = '100%';
+            
+            const endTimeInput = document.createElement('input');
+            endTimeInput.type = 'time';
+            endTimeInput.className = 'end-time';
+            endTimeInput.value = formatTimeForInput(event.end);
+            endTimeInput.style.border = '1px solid #ddd';
+            endTimeInput.style.padding = '4px';
+            endTimeInput.style.borderRadius = '3px';
+            endTimeInput.style.width = '100%';
+            
+            const startLabel = document.createElement('small');
+            startLabel.textContent = 'Start:';
+            startLabel.style.display = 'block';
+            startLabel.style.color = '#666';
+            
+            const endLabel = document.createElement('small');
+            endLabel.textContent = 'End:';
+            endLabel.style.display = 'block';
+            endLabel.style.color = '#666';
+            endLabel.style.marginTop = '5px';
+            
+            timeContainer.appendChild(startLabel);
+            timeContainer.appendChild(startTimeInput);
+            timeContainer.appendChild(endLabel);
+            timeContainer.appendChild(endTimeInput);
+            
+            timeCell.appendChild(timeContainer);
+            
+            // Event title cell
+            const titleCell = document.createElement('td');
+            titleCell.style.padding = '8px';
+            const titleInput = document.createElement('input');
+            titleInput.type = 'text';
+            titleInput.className = 'event-title';
+            titleInput.value = event.summary;
+            titleInput.style.width = '100%';
+            titleInput.style.border = '1px solid #ddd';
+            titleInput.style.padding = '4px';
+            titleInput.style.borderRadius = '3px';
+            titleCell.appendChild(titleInput);
+            
+            // All day checkbox cell
+            const allDayCell = document.createElement('td');
+            allDayCell.style.padding = '8px';
+            const allDayCheckbox = document.createElement('input');
+            allDayCheckbox.type = 'checkbox';
+            allDayCheckbox.className = 'all-day-checkbox';
+            allDayCheckbox.checked = event.isAllDay;
+            allDayCell.appendChild(allDayCheckbox);
+            
+            // Actions cell
+            const actionsCell = document.createElement('td');
+            actionsCell.style.padding = '8px';
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.style.backgroundColor = '#e74c3c';
+            deleteBtn.style.color = 'white';
+            deleteBtn.style.border = 'none';
+            deleteBtn.style.padding = '4px 8px';
+            deleteBtn.style.borderRadius = '3px';
+            deleteBtn.style.cursor = 'pointer';
+            actionsCell.appendChild(deleteBtn);
+            
+            // Append all cells to the row
+            tr.appendChild(dateCell);
+            tr.appendChild(timeCell);
+            tr.appendChild(titleCell);
+            tr.appendChild(allDayCell);
+            tr.appendChild(actionsCell);
+            
+            // Add row to table body
+            tbody.appendChild(tr);
+            
+            // Event listeners
+            // All-day checkbox
+            allDayCheckbox.addEventListener('change', function() {
+                timeContainer.style.display = this.checked ? 'none' : 'block';
+            });
+            
+            // Delete button
+            deleteBtn.addEventListener('click', function() {
+                calendarEvents.splice(index, 1);
+                tr.remove();
+                
+                // Update other rows' indices after deletion
+                const rows = tbody.querySelectorAll('tr');
+                rows.forEach((row, i) => {
+                    row.dataset.index = i;
+                    const deleteButton = row.querySelector('.delete-btn');
+                    deleteButton.onclick = function() {
+                        calendarEvents.splice(i, 1);
+                        row.remove();
+                    };
+                });
+            });
+            
+            // Auto-sort when date or time changes
+            dateInput.addEventListener('change', () => scheduleReSort(tbody));
+            startTimeInput.addEventListener('change', () => scheduleReSort(tbody));
+            allDayCheckbox.addEventListener('change', () => scheduleReSort(tbody));
         });
         
-        // Create day sections
-        Object.keys(eventsByDay).sort((a, b) => a - b).forEach(day => {
-            const dayEvents = eventsByDay[day];
+        table.appendChild(tbody);
+        eventEditor.appendChild(table);
+        
+        // Add "Add Event" button
+        const addBtn = document.createElement('button');
+        addBtn.textContent = '+ Add New Event';
+        addBtn.style.marginTop = '20px';
+        addBtn.style.backgroundColor = '#3498db';
+        
+        addBtn.addEventListener('click', function() {
+            const month = parseInt(calendarMonth.value);
+            const year = parseInt(calendarYear.value);
+            const today = new Date();
             
-            // Day header
-            const dayHeader = document.createElement('h3');
-            const date = dayEvents[0].start;
-            dayHeader.textContent = date.toLocaleDateString(undefined, {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric'
-            });
-            eventEditor.appendChild(dayHeader);
+            const newEventDate = new Date(year, month, today.getDate(), 9, 0, 0);
+            const newEndDate = new Date(year, month, today.getDate(), 10, 0, 0);
             
-            // Add events for this day
-            dayEvents.forEach((event) => {
-                const eventDiv = document.createElement('div');
-                eventDiv.className = 'editor-event';
-                
-                // Create form elements
-                eventDiv.innerHTML = `
-                    <div class="form-group">
-                        <label>Event Title:</label>
-                        <input type="text" class="event-title" value="${event.summary}" style="width: 100%; padding: 8px;">
-                    </div>
-                    <div class="form-group" style="margin-top: 10px;">
-                        <label>Date:</label>
-                        <input type="date" class="event-date" value="${formatDateForInput(event.start)}" style="width: 100%; padding: 8px;">
-                    </div>
-                    <div class="form-group" style="margin-top: 10px;">
-                        <label>
-                            <input type="checkbox" class="all-day-checkbox" ${event.isAllDay ? 'checked' : ''}>
-                            All Day Event
-                        </label>
-                    </div>
-                    <div class="time-inputs" style="display: ${event.isAllDay ? 'none' : 'flex'}; gap: 10px; margin-top: 10px;">
-                        <div style="flex: 1;">
-                            <label>Start Time:</label>
-                            <input type="time" class="start-time" value="${formatTimeForInput(event.start)}" style="width: 100%; padding: 8px;">
-                        </div>
-                        <div style="flex: 1;">
-                            <label>End Time:</label>
-                            <input type="time" class="end-time" value="${formatTimeForInput(event.end)}" style="width: 100%; padding: 8px;">
-                        </div>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button class="delete-btn" data-index="${event.index}">Delete Event</button>
-                    </div>
-                `;
-                
-                // Handle all-day checkbox
-                const allDayCheckbox = eventDiv.querySelector('.all-day-checkbox');
-                const timeInputs = eventDiv.querySelector('.time-inputs');
-                
-                allDayCheckbox.addEventListener('change', function() {
-                    timeInputs.style.display = this.checked ? 'none' : 'flex';
-                });
-                
-                // Delete button
-                const deleteBtn = eventDiv.querySelector('.delete-btn');
-                deleteBtn.addEventListener('click', function() {
-                    const index = parseInt(this.getAttribute('data-index'));
-                    calendarEvents = calendarEvents.filter((_, i) => i !== index);
-                    eventDiv.remove();
-                });
-                
-                eventEditor.appendChild(eventDiv);
-            });
+            const newEvent = {
+                summary: 'New Event',
+                start: newEventDate,
+                end: newEndDate,
+                location: '',
+                isAllDay: false
+            };
             
-            // Add "Add Event" button for this day
-            const addBtn = document.createElement('button');
-            addBtn.textContent = `+ Add Event on ${dayHeader.textContent}`;
-            addBtn.style.marginBottom = '20px';
-            addBtn.setAttribute('data-day', day);
-            
-            addBtn.addEventListener('click', function() {
-                const day = parseInt(this.getAttribute('data-day'));
-                const month = parseInt(calendarMonth.value);
-                const year = parseInt(calendarYear.value);
-                
-                const newEventDate = new Date(year, month, day, 9, 0, 0);
-                const newEndDate = new Date(year, month, day, 10, 0, 0);
-                
-                const newEvent = {
-                    summary: 'New Event',
-                    start: newEventDate,
-                    end: newEndDate,
-                    location: '',
-                    isAllDay: false
-                };
-                
-                calendarEvents.push(newEvent);
-                showEventEditor(); // Refresh the editor
-            });
-            
-            eventEditor.appendChild(addBtn);
+            calendarEvents.push(newEvent);
+            showEventEditor(); // Refresh the editor
         });
+        
+        eventEditor.appendChild(addBtn);
     }
     
     // Handle save button
     saveButton.onclick = function() {
         // Update events from editor inputs
-        const eventDivs = eventEditor.querySelectorAll('.editor-event');
+        const rows = eventEditor.querySelectorAll('tr[data-index]');
         
-        eventDivs.forEach((div) => {
-            const titleInput = div.querySelector('.event-title');
-            const dateInput = div.querySelector('.event-date');
-            const allDayCheckbox = div.querySelector('.all-day-checkbox');
-            const startTimeInput = div.querySelector('.start-time');
-            const endTimeInput = div.querySelector('.end-time');
-            const deleteBtn = div.querySelector('.delete-btn');
-            const eventIndex = parseInt(deleteBtn.getAttribute('data-index'));
+        rows.forEach((row) => {
+            const index = parseInt(row.dataset.index);
+            const dateInput = row.querySelector('.event-date');
+            const titleInput = row.querySelector('.event-title');
+            const allDayCheckbox = row.querySelector('.all-day-checkbox');
+            const startTimeInput = row.querySelector('.start-time');
+            const endTimeInput = row.querySelector('.end-time');
             
-            if (eventIndex < calendarEvents.length) {
-                const event = calendarEvents[eventIndex];
+            if (index < calendarEvents.length) {
+                const event = calendarEvents[index];
                 
                 // Update event data
                 event.summary = titleInput.value;
@@ -627,6 +712,44 @@ function showEventEditor() {
     
     // Show modal
     editEventsModal.style.display = 'block';
+}
+
+// Helper for debounced re-sorting
+let resortTimeout = null;
+function scheduleReSort(tbody) {
+    if (resortTimeout) {
+        clearTimeout(resortTimeout);
+    }
+    
+    resortTimeout = setTimeout(() => {
+        // First update the calendarEvents array with current values
+        const rows = tbody.querySelectorAll('tr');
+        rows.forEach((row) => {
+            const index = parseInt(row.dataset.index);
+            if (index < calendarEvents.length) {
+                const dateInput = row.querySelector('.event-date');
+                const allDayCheckbox = row.querySelector('.all-day-checkbox');
+                const startTimeInput = row.querySelector('.start-time');
+                
+                // Parse the date
+                const [year, month, day] = dateInput.value.split('-').map(Number);
+                
+                if (!allDayCheckbox.checked && startTimeInput) {
+                    // Update start time
+                    const [startHours, startMinutes] = startTimeInput.value.split(':').map(Number);
+                    calendarEvents[index].start = new Date(year, month - 1, day, startHours, startMinutes, 0);
+                } else {
+                    // All-day event
+                    calendarEvents[index].start = new Date(year, month - 1, day, 0, 0, 0);
+                }
+                
+                calendarEvents[index].isAllDay = allDayCheckbox.checked;
+            }
+        });
+        
+        // Resort and refresh
+        showEventEditor();
+    }, 500); // Debounce for 500ms
 }
 
 // Function to update iCal data after edits
