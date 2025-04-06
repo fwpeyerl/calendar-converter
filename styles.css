@@ -262,3 +262,49 @@ button:hover {
     outline: none;
     box-shadow: 0 0 3px rgba(52, 152, 219, 0.3);
 }
+
+/* Add these styles to your existing styles.css file */
+
+.info-banner {
+    background-color: #fff8e1;
+    border-left: 4px solid #ffc107;
+    padding: 12px 15px;
+    margin-bottom: 25px;
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.info-banner p {
+    margin: 0;
+    color: #5d4037;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.quiltt-info {
+    background-color: #e8f5e9;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 30px;
+    border: 1px solid #c8e6c9;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.quiltt-info h3 {
+    color: #2e7d32;
+    margin-top: 0;
+}
+
+.quiltt-info ul {
+    padding-left: 20px;
+}
+
+.quiltt-info li {
+    margin-bottom: 8px;
+    color: #37474f;
+}
+
+.quiltt-info p:last-child {
+    margin-bottom: 0;
+    font-style: italic;
+}
