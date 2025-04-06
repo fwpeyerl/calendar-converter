@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Calendar to iCal Converter</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.5.0/ical.min.js"></script>
+</head>
+<body>
+    <h1>PDF Calendar to iCal Converter</h1>
+    
+    <div class="container">
+        <div class="step">
+            <h2>Step 1: Upload Your Calendar PDF</h2>
+            <div class="upload-container" id="upload-area">
+                <p>Click to upload or drag and drop your PDF calendar file here</p>
+            </div>
+            <input type="file" id="file-input" accept="application/pdf" />
+            <p id="file-name"></p>
+        </div>
+        
+        <div class="step">
+            <h2>Step 2: Calendar Information</h2>
+            <div class="calendar-info">
+                <h3>Set Your Calendar Details</h3>
+                <p>Please provide these details to ensure your events are created with the correct date and time.</p>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="calendar-month">Month:</label>
+                        <select id="calendar-month">
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4">May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="calendar-year">Year:</label>
+                        <input type="number" id="calendar-year" min="2020" max="2030">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="timezone-select">Time Zone:</label>
+                    <select id="timezone-select">
+                        <option value="America/New_York">Eastern Time (ET) - New York</option>
+                        <option value="America/Chicago">Central Time (CT) - Chicago</option>
+                        <option value="America/Denver">Mountain Time (MT) - Denver</option>
+                        <option value="America/Los_Angeles">Pacific Time (PT) - Los Angeles</option>
+                        <option value="America/Anchorage">Alaska Time - Anchorage</option>
+                        <option value="Pacific/Honolulu">Hawaii Time - Honolulu</option>
+                        <option value="Europe/London">GMT/UTC - London</option>
+                        <option value="Europe/Paris">Central European Time - Paris</option>
+                        <option value="Asia/Tokyo">Japan Time - Tokyo</option>
+                        <option value="Australia/Sydney">Australian Eastern Time - Sydney</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="day-marker">Calendar Day Format:</label>
+                    <select id="day-marker">
+                        <option value="standard">Standard (Days listed as numbers: 1, 2, 3...)</option>
+                        <option value="grid">Grid Layout (Days in a grid/table)</option>
+                        <option value="text">Text Format (Days with events listed under each date)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <h2>Step 3: Extract Events</h2>
+            <p>After uploading and setting calendar details, extract events from your PDF calendar.</p>
+            <button id="extract-btn" disabled>Extract Events</button>
+            <div class="loader" id="loader"></div>
+            <div id="preview" style="display: none;">
+                <h3>Extracted Events Preview</h3>
+                <div id="events-list"></div>
+                <div style="margin-top: 20px">
+                    <button id="edit-events-btn">Edit Events</button>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                        Not seeing the correct events? Use the Edit Events button to manually adjust them.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="step">
+            <h2>Step 4: Get Your iCal Link</h2>
+            <p>Once events are extracted, you can get your iCal link to import into your calendar application.</p>
+            <div class="result-container" id="result-container">
+                <textarea id="ical-data" readonly></textarea>
+                <button id="download-btn">Download iCal File</button>
+                <button id="copy-btn">Copy iCal Link</button>
+                <div class="ical-link" id="ical-link"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load JavaScript after DOM is ready -->
+    <script src="script.js"></script>
+</body>
+</html>
