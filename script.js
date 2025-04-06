@@ -600,6 +600,9 @@ function updateICalData() {
 
 // Generate iCal data
 function generateICalData(events, timezone) {
+    // For simplicity, defaulting to UTC to avoid timezone issues
+    timezone = 'UTC';
+    
     const calendarComponent = new ICAL.Component(['vcalendar', [], []]);
     
     // Set required properties
@@ -607,17 +610,6 @@ function generateICalData(events, timezone) {
     calendarComponent.updatePropertyWithValue('version', '2.0');
     calendarComponent.updatePropertyWithValue('calscale', 'GREGORIAN');
     calendarComponent.updatePropertyWithValue('method', 'PUBLISH');
-    
-    // Add timezone component if needed
-    if (timezone && timezone !== 'UTC') {
-        try {
-            addTimezoneComponent(calendarComponent, timezone);
-        } catch (e) {
-            console.warn('Could not add timezone component:', e);
-            // Fallback to UTC if timezone creation fails
-            timezone = 'UTC';
-        }
-    }
     
     events.forEach(event => {
         const vevent = new ICAL.Component('vevent');
@@ -642,32 +634,20 @@ function generateICalData(events, timezone) {
             dtend.setParameter('value', 'DATE');
             vevent.addProperty(dtend);
         } else {
-            // For timed events, either use UTC or local time with TZID
-            if (timezone && timezone !== 'UTC') {
-                // Use local time with TZID parameter
-                const dtstart = new ICAL.Property('dtstart', vevent);
-                const startTime = ICAL.Time.fromJSDate(event.start, false);
-                dtstart.setValue(startTime);
-                dtstart.setParameter('tzid', timezone);
-                vevent.addProperty(dtstart);
-                
-                const dtend = new ICAL.Property('dtend', vevent);
-                const endTime = ICAL.Time.fromJSDate(event.end, false);
-                dtend.setValue(endTime);
-                dtend.setParameter('tzid', timezone);
-                vevent.addProperty(dtend);
-            } else {
-                // Use UTC time format
-                const dtstart = new ICAL.Property('dtstart', vevent);
-                const startTime = ICAL.Time.fromJSDate(new Date(event.start.toUTCString()));
-                dtstart.setValue(startTime);
-                vevent.addProperty(dtstart);
-                
-                const dtend = new ICAL.Property('dtend', vevent);
-                const endTime = ICAL.Time.fromJSDate(new Date(event.end.toUTCString()));
-                dtend.setValue(endTime);
-                vevent.addProperty(dtend);
-            }
+            // For timed events, use UTC format (simpler and more compatible)
+            const dtstart = new ICAL.Property('dtstart', vevent);
+            const jsStartDate = new Date(event.start.toUTCString());
+            const startTime = ICAL.Time.fromJSDate(jsStartDate);
+            startTime.zone = ICAL.Timezone.utcTimezone;
+            dtstart.setValue(startTime);
+            vevent.addProperty(dtstart);
+            
+            const dtend = new ICAL.Property('dtend', vevent);
+            const jsEndDate = new Date(event.end.toUTCString());
+            const endTime = ICAL.Time.fromJSDate(jsEndDate);
+            endTime.zone = ICAL.Timezone.utcTimezone;
+            dtend.setValue(endTime);
+            vevent.addProperty(dtend);
         }
         
         if (event.location) {
@@ -681,7 +661,8 @@ function generateICalData(events, timezone) {
         vevent.addProperty(uid);
         
         const dtstamp = new ICAL.Property('dtstamp', vevent);
-        const now = ICAL.Time.fromJSDate(new Date(), false);
+        const now = ICAL.Time.now();
+        now.zone = ICAL.Timezone.utcTimezone;
         dtstamp.setValue(now);
         vevent.addProperty(dtstamp);
         
@@ -709,7 +690,13 @@ function addTimezoneComponent(calendar, timezone) {
         isDate: false
     });
     standard.addPropertyWithValue('dtstart', standardTime);
-    standard.addPropertyWithValue('rrule', 'FREQ=YEARLY;BYMONTH=11;BYDAY=1SU');
+    
+    // Add RRULE property directly as a string - need to use specific format
+    const standardRRule = new ICAL.Property('rrule', standard);
+    standardRRule.setValue(new ICAL.Recur({ freq: 'YEARLY', byMonth: 11, byDay: [{ day: 1, week: 1 }] }));
+    standard.addProperty(standardRRule);
+    
+    // UTC offsets must have format [+/-]HHMM[SS]
     standard.addPropertyWithValue('tzoffsetfrom', '-0400');
     standard.addPropertyWithValue('tzoffsetto', '-0500');
     standard.addPropertyWithValue('tzname', 'Standard Time');
@@ -727,7 +714,12 @@ function addTimezoneComponent(calendar, timezone) {
         isDate: false
     });
     daylight.addPropertyWithValue('dtstart', daylightTime);
-    daylight.addPropertyWithValue('rrule', 'FREQ=YEARLY;BYMONTH=3;BYDAY=2SU');
+    
+    // Add RRULE property
+    const daylightRRule = new ICAL.Property('rrule', daylight);
+    daylightRRule.setValue(new ICAL.Recur({ freq: 'YEARLY', byMonth: 3, byDay: [{ day: 0, week: 2 }] }));
+    daylight.addProperty(daylightRRule);
+    
     daylight.addPropertyWithValue('tzoffsetfrom', '-0500');
     daylight.addPropertyWithValue('tzoffsetto', '-0400');
     daylight.addPropertyWithValue('tzname', 'Daylight Time');
